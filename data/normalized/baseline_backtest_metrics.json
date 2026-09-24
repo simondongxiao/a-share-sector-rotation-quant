@@ -1,0 +1,22 @@
+{
+  "start_date": "2015-01-05",
+  "end_date": "2026-09-22",
+  "start_value": 1.0,
+  "end_value": 0.7065116619593212,
+  "total_return": -0.29348833804067875,
+  "cagr": -0.029226287201026824,
+  "annualized_volatility": 0.18872839343399686,
+  "sharpe_rf0": -0.06315444979223621,
+  "max_drawdown": -0.5808777130968089,
+  "average_daily_turnover": 0.06570648528359346,
+  "total_turnover": 187.26348305824138,
+  "total_fees": 0.06156877078628826,
+  "observation_days": 2850,
+  "benchmark_510300_total_return": 0.25081344902385005,
+  "benchmark_510300_cagr": 0.019290956735235065,
+  "benchmark_510300_max_drawdown": -0.46306068601583183,
+  "eligible_etf_count": 237,
+  "eligible_industry_count": 19,
+  "used_etf_count": 130,
+  "rebalance_signal_count": 177
+}
