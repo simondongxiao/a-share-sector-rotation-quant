@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+data/raw/microstructure/stock_daily/
+data/raw/microstructure/*.csv.gz
+data/raw/microstructure/*.parquet
+data/raw/etf_daily/
+reports/*.log
