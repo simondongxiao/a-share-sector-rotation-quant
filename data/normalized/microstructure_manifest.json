@@ -1,0 +1,14 @@
+{
+  "retrieved_at": "2026-09-24T15:30:37.661930+00:00",
+  "start_date": "20150101",
+  "end_date": "20260924",
+  "constituent_count": 5220,
+  "industry_count": 31,
+  "historical_limit_down_method": "price_return_estimate",
+  "recent_limit_down_source": "Eastmoney limit-down pool via AkShare, recent window only",
+  "intraday_source": "Sina minute endpoint via AkShare, recent bars only",
+  "notes": [
+    "Historical sealed amount is unavailable from free daily OHLC and remains null.",
+    "Current SW constituent snapshot is used for the historical breadth estimate; this is not a point-in-time membership reconstruction."
+  ]
+}
