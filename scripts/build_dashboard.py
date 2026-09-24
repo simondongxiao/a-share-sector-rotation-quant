@@ -53,24 +53,34 @@ def number(value, digits=2):
 
 
 def build_payload() -> dict:
-    universe = pd.read_csv(NORMALIZED / "etf_shenwan_level1_mapping_draft.csv", dtype={"code": str})
-    universe["code"] = universe["code"].str.zfill(6)
-    universe["asset_size_cny"] = pd.to_numeric(universe["asset_size_cny"], errors="coerce")
-    universe = universe[(universe["mapping_status"] == "candidate") & (universe["tracking_status"] == "verified_page_field") & (universe["size_eligible_current"] == True)].copy()  # noqa: E712
-    rows = []
-    for row in universe.itertuples(index=False):
-        latest = read_etf_latest(row.code)
-        if not latest:
-            continue
-        rows.append({
-            "code": row.code,
-            "name": str(row.fund_name),
-            "industry": str(row.shenwan_level1),
-            "tracking_index": str(row.tracking_index),
-            "asset_size_cny": float(row.asset_size_cny),
-            **latest,
-        })
-    etfs = pd.DataFrame(rows)
+    snapshot_path = NORMALIZED / "dashboard_etf_features.csv"
+    mapping_path = NORMALIZED / "etf_shenwan_level1_mapping_draft.csv"
+    use_snapshot = snapshot_path.exists() and not mapping_path.exists()
+    if use_snapshot:
+        # GitHub Pages contains a compact feature snapshot, while the full
+        # local ETF history remains outside the public repository.
+        universe = pd.read_csv(snapshot_path, dtype={"code": str})
+        universe["code"] = universe["code"].str.zfill(6)
+        etfs = universe.copy()
+    else:
+        universe = pd.read_csv(mapping_path, dtype={"code": str})
+        universe["code"] = universe["code"].str.zfill(6)
+        universe["asset_size_cny"] = pd.to_numeric(universe["asset_size_cny"], errors="coerce")
+        universe = universe[(universe["mapping_status"] == "candidate") & (universe["tracking_status"] == "verified_page_field") & (universe["size_eligible_current"] == True)].copy()  # noqa: E712
+        rows = []
+        for row in universe.itertuples(index=False):
+            latest = read_etf_latest(row.code)
+            if not latest:
+                continue
+            rows.append({
+                "code": row.code,
+                "name": str(row.fund_name),
+                "industry": str(row.shenwan_level1),
+                "tracking_index": str(row.tracking_index),
+                "asset_size_cny": float(row.asset_size_cny),
+                **latest,
+            })
+        etfs = pd.DataFrame(rows)
     for col in ["mom20", "mom60", "trend20", "vol20", "amount60"]:
         etfs[f"rank_{col}"] = etfs[col].rank(pct=True)
     etfs["score"] = 0.35 * etfs["rank_mom20"] + 0.35 * etfs["rank_mom60"] + 0.20 * etfs["rank_trend20"] - 0.10 * etfs["rank_vol20"]
@@ -79,12 +89,20 @@ def build_payload() -> dict:
     reps = etfs.sort_values(["score", "asset_size_cny"], ascending=False).drop_duplicates("industry")
     reps = reps.sort_values("score", ascending=False).head(20).copy()
 
-    market = pd.read_csv(DAILY_DIR / "510300.csv.gz", compression="gzip", parse_dates=["date"])
+    market_path = DAILY_DIR / "510300.csv.gz"
+    if market_path.exists():
+        market = pd.read_csv(market_path, compression="gzip", parse_dates=["date"])
+    else:
+        market = pd.DataFrame()
     market["close"] = pd.to_numeric(market["close"], errors="coerce")
-    market = market.dropna(subset=["date", "close"]).sort_values("date")
-    market["ma200"] = market["close"].rolling(200, min_periods=150).mean()
-    market_last = market.iloc[-1]
-    risk_on = bool(market_last["close"] > market_last["ma200"]) if pd.notna(market_last["ma200"]) else False
+    if not market.empty:
+        market = market.dropna(subset=["date", "close"]).sort_values("date")
+        market["ma200"] = market["close"].rolling(200, min_periods=150).mean()
+        market_last = market.iloc[-1]
+        risk_on = bool(market_last["close"] > market_last["ma200"]) if pd.notna(market_last["ma200"]) else False
+    else:
+        market_last = pd.Series({"date": pd.Timestamp(etfs["date"].max()), "close": np.nan, "ma200": np.nan})
+        risk_on = False
     eligible_reps = reps[reps["trend_ok"]].head(5)
     if risk_on and len(eligible_reps) >= 3:
         eligible_reps = eligible_reps.copy()
@@ -122,7 +140,7 @@ def build_payload() -> dict:
 
     data_dates = {
         "etf_daily": str(etfs["date"].max()) if not etfs.empty else None,
-        "market_daily": market_last["date"].date().isoformat(),
+        "market_daily": market_last["date"].date().isoformat() if pd.notna(market_last["date"]) else None,
         "limit_down_official": max((v["date"] for v in micro.values() if v["date"]), default=None),
         "etf_30m": None,
     }
